@@ -10,6 +10,10 @@ console = Console()
 
 def run() -> None:
     """Run all configured hooks without creating a commit."""
+    if not precommit.is_installed():
+        console.print("[yellow]pre-commit is not available. Run [bold]hoko init[/bold] first.[/yellow]")
+        raise typer.Exit(code=1)
+
     exit_code = precommit.run_all_hooks()
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

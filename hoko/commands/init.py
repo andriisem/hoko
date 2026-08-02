@@ -43,11 +43,20 @@ def run(
             for name in recommended:
                 config.add_capability(name)
 
-    precommit.ensure_installed()
+    precommit_available = precommit.ensure_installed()
+
     precommit.write_config(config)
     config.save()
 
-    if not precommit.install_hooks():
+    if not precommit_available:
+        console.print(
+            "\n[yellow]⚠ pre-commit is missing and hoko could not install it automatically.[/yellow]"
+        )
+        console.print(
+            "  Install it with [bold]pipx install pre-commit[/bold] "
+            "(or [bold]uv tool install pre-commit[/bold]), then run [bold]hoko init[/bold] again."
+        )
+    elif not precommit.install_hooks():
         console.print("[yellow]⚠ Could not install git hooks (are you in a git repository?)[/yellow]")
 
     console.print("\n[green]hoko initialized.[/green]")

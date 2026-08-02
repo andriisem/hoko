@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import importlib.util
+import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,13 +28,62 @@ class HealthCheck:
     ok: bool
 
 
+def resolve_command() -> list[str] | None:
+    """Find a runnable pre-commit, or None if there isn't one.
+
+    PATH is only the first place to look: hoko is usually installed by pipx or
+    Homebrew into an isolated virtualenv whose bin directory is not on PATH, so a
+    pre-commit living next to us is invisible to `shutil.which`.
+    """
+    on_path = shutil.which("pre-commit")
+    if on_path:
+        return [on_path]
+
+    beside_us = shutil.which("pre-commit", path=os.path.dirname(sys.executable))
+    if beside_us:
+        return [beside_us]
+
+    if importlib.util.find_spec("pre_commit") is not None:
+        return [sys.executable, "-m", "pre_commit"]
+
+    return None
+
+
 def is_installed() -> bool:
-    return shutil.which("pre-commit") is not None
+    return resolve_command() is not None
 
 
-def ensure_installed() -> None:
-    if not is_installed():
-        subprocess.run(["pip", "install", "pre-commit"], check=True)
+def _install_commands() -> list[list[str]]:
+    """Ways to obtain pre-commit, best first.
+
+    Installing into our own interpreter comes first because it works for every
+    layout that has pip available (venv, pipx venv, Homebrew venv) and needs
+    nothing else on the machine. `pip` as a bare command is never used: plenty of
+    systems only ship `pip3`, or no pip launcher at all.
+    """
+    commands = [[sys.executable, "-m", "pip", "install", "pre-commit"]]
+    for installer, arguments in (("uv", ["tool", "install"]), ("pipx", ["install"])):
+        executable = shutil.which(installer)
+        if executable:
+            commands.append([executable, *arguments, "pre-commit"])
+    return commands
+
+
+def ensure_installed() -> bool:
+    """Install pre-commit if it is missing. Returns whether it is available afterwards."""
+    if is_installed():
+        return True
+
+    for command in _install_commands():
+        try:
+            subprocess.run(command, capture_output=True, check=False)
+        except OSError:
+            continue
+        importlib.invalidate_caches()
+        if is_installed():
+            return True
+
+    return False
 
 
 def render_repos(config: HokoConfig) -> list[dict]:
@@ -76,26 +128,30 @@ def write_config(config: HokoConfig, path: Path | None = None) -> None:
 
 
 def install_hooks() -> bool:
-    if not is_installed():
+    command = resolve_command()
+    if command is None:
         return False
-    result = subprocess.run(["pre-commit", "install"])
+    result = subprocess.run([*command, "install"])
     return result.returncode == 0
 
 
 def update_hooks(config: HokoConfig) -> None:
-    if is_installed():
-        subprocess.run(["pre-commit", "autoupdate"], check=True)
+    command = resolve_command()
+    if command is not None:
+        subprocess.run([*command, "autoupdate"], check=True)
 
 
 def run_all_hooks() -> int:
-    if not is_installed():
+    command = resolve_command()
+    if command is None:
         return 1
-    result = subprocess.run(["pre-commit", "run", "--all-files"])
+    result = subprocess.run([*command, "run", "--all-files"])
     return result.returncode
 
 
 def health_checks(config: HokoConfig) -> list[HealthCheck]:
     return [
+        HealthCheck("pre-commit available", is_installed()),
         HealthCheck("Hooks installed", (Path(".git") / "hooks" / "pre-commit").exists()),
         HealthCheck("Configuration valid", Path(CONFIG_FILENAME).exists()),
     ]

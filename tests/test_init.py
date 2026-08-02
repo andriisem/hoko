@@ -8,7 +8,7 @@ runner = CliRunner()
 
 
 def _stub_out_precommit_binary(monkeypatch):
-    monkeypatch.setattr(init_module.precommit, "ensure_installed", lambda: None)
+    monkeypatch.setattr(init_module.precommit, "ensure_installed", lambda: True)
     monkeypatch.setattr(init_module.precommit, "install_hooks", lambda: True)
 
 
@@ -63,11 +63,27 @@ def test_init_does_not_recommend_already_installed_capabilities(tmp_path, monkey
 
 def test_init_persists_config_even_if_hook_install_fails(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(init_module.precommit, "ensure_installed", lambda: None)
+    monkeypatch.setattr(init_module.precommit, "ensure_installed", lambda: True)
     monkeypatch.setattr(init_module.precommit, "install_hooks", lambda: False)
 
     result = runner.invoke(app, ["init", "--yes"])
 
     assert result.exit_code == 0
     assert "Could not install git hooks" in result.output
+    assert "secrets" in HokoConfig.load().capabilities
+
+
+def test_init_explains_how_to_install_pre_commit_when_it_is_unavailable(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(init_module.precommit, "ensure_installed", lambda: False)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("hooks must not be installed without pre-commit")
+
+    monkeypatch.setattr(init_module.precommit, "install_hooks", fail)
+
+    result = runner.invoke(app, ["init", "--yes"])
+
+    assert result.exit_code == 0
+    assert "pipx install pre-commit" in result.output
     assert "secrets" in HokoConfig.load().capabilities
