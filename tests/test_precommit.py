@@ -75,7 +75,9 @@ def test_write_config_preserves_hand_added_repo(tmp_path, monkeypatch):
     assert any(repo["repo"].endswith("detect-secrets") for repo in managed_repos)
 
 
-def test_write_config_drops_stale_managed_repo_when_capability_removed(tmp_path, monkeypatch):
+def test_write_config_drops_stale_managed_repo_when_capability_removed(
+    tmp_path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
 
     write_config(HokoConfig(capabilities=["secrets", "markdown"]))
@@ -101,7 +103,9 @@ def test_write_config_is_idempotent(tmp_path, monkeypatch):
 def test_write_config_preserves_other_top_level_keys(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config_path = tmp_path / ".pre-commit-config.yaml"
-    config_path.write_text("default_language_version:\n  python: python3.12\nrepos: []\n")
+    config_path.write_text(
+        "default_language_version:\n  python: python3.12\nrepos: []\n"
+    )
 
     write_config(HokoConfig(capabilities=["secrets"]))
 
@@ -110,15 +114,53 @@ def test_write_config_preserves_other_top_level_keys(tmp_path, monkeypatch):
 
 
 def test_required_hook_types_is_just_pre_commit_by_default():
-    assert precommit.required_hook_types(HokoConfig(capabilities=["secrets"])) == ["pre-commit"]
+    assert precommit.required_hook_types(HokoConfig(capabilities=["secrets"])) == [
+        "pre-commit"
+    ]
 
 
 def test_required_hook_types_includes_commit_msg_for_commitlint(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
-    hook_types = precommit.required_hook_types(HokoConfig(capabilities=["secrets", "commitlint"]))
+    hook_types = precommit.required_hook_types(
+        HokoConfig(capabilities=["secrets", "commitlint"])
+    )
 
     assert hook_types == ["pre-commit", "commit-msg"]
+
+
+def test_install_hooks_lets_pre_commit_print_by_default(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(precommit, "resolve_command", lambda: ["pre-commit"])
+
+    captured = {}
+
+    def run(command, **kwargs):
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(precommit.subprocess, "run", run)
+
+    precommit.install_hooks(HokoConfig())
+
+    assert not captured.get("capture_output")
+
+
+def test_install_hooks_quiet_captures_pre_commits_own_output(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(precommit, "resolve_command", lambda: ["pre-commit"])
+
+    captured = {}
+
+    def run(command, **kwargs):
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(precommit.subprocess, "run", run)
+
+    precommit.install_hooks(HokoConfig(), quiet=True)
+
+    assert captured.get("capture_output") is True
 
 
 def _fake_which(monkeypatch, found: dict[str | None, str]):

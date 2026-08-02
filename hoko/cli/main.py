@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typer
 
-from hoko.commands import add, check, doctor, export, import_, init, rm, update
+from hoko.commands import add, check, doctor, export, fleet, import_, init, rm, update
 from hoko.commands import list as list_cmd
 
 app = typer.Typer(
@@ -20,6 +20,7 @@ app.command("update")(update.run)
 app.command("check")(check.run)
 app.command("export")(export.run)
 app.command("import")(import_.run)
+app.command("fleet")(fleet.run)
 
 
 def main() -> None:
