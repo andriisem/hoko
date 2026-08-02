@@ -10,9 +10,15 @@ from hoko.config.models import HokoConfig
 console = Console()
 
 
+def complete_capability(incomplete: str) -> list[str]:
+    return [name for name in list_capabilities() if name.startswith(incomplete)]
+
+
 def run(
     capabilities: list[str] = typer.Argument(
-        ..., help="One or more capabilities to install, e.g. 'python' or 'formatting'."
+        ...,
+        help=f"One or more capabilities to install. Available: {', '.join(list_capabilities())}.",
+        autocompletion=complete_capability,
     ),
 ) -> None:
     """Install one or more capabilities."""
