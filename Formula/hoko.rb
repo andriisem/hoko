@@ -3,9 +3,9 @@ class Hoko < Formula
 
   desc "Developer workflows in one command"
   homepage "https://github.com/andriisem/hoko"
-  # TODO: fill in after cutting a release tag (e.g. `git tag v0.1.2 && git push origin v0.1.2`,
+  # TODO: fill in after cutting a release tag (e.g. `git tag v0.1.3 && git push origin v0.1.3`,
   # then a GitHub Release). sha256 is `shasum -a 256` of the downloaded tarball.
-  url "https://github.com/andriisem/hoko/archive/refs/tags/v0.1.2.tar.gz"
+  url "https://github.com/andriisem/hoko/archive/refs/tags/v0.1.3.tar.gz"
   sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
   license "MIT"
   head "https://github.com/andriisem/hoko.git", branch: "main"
@@ -29,7 +29,7 @@ class Hoko < Formula
   end
 
   resource "mdurl" do
-    url "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz"
+    url "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.3.tar.gz"
     sha256 "bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"
   end
 
