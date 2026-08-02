@@ -1,6 +1,6 @@
 [project]
 name = "hoko"
-version = "0.1.1"
+version = "0.1.2"
 description = "Developer workflows in one command."
 readme = "README.md"
 requires-python = ">=3.12"
