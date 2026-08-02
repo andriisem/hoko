@@ -3,9 +3,9 @@ class Hoko < Formula
 
   desc "Developer workflows in one command"
   homepage "https://github.com/andriisem/hoko"
-  # TODO: fill in after cutting a release tag (e.g. `git tag v0.1.0 && git push origin v0.1.0`,
+  # TODO: fill in after cutting a release tag (e.g. `git tag v0.1.1 && git push origin v0.1.1`,
   # then a GitHub Release). sha256 is `shasum -a 256` of the downloaded tarball.
-  url "https://github.com/andriisem/hoko/archive/refs/tags/v0.1.0.tar.gz"
+  url "https://github.com/andriisem/hoko/archive/refs/tags/v0.1.1.tar.gz"
   sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
   license "MIT"
   head "https://github.com/andriisem/hoko.git", branch: "main"
