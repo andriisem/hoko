@@ -2,8 +2,6 @@
 
 > Developer workflows in one command.
 
-See [tech-spec.md](tech-spec.md) for the full design.
-
 ## Development
 
 ```bash
