@@ -116,7 +116,9 @@ def _merge_repos(existing_repos: list, managed_repos: list[dict]) -> list:
     (see MANAGED_REPO_URLS) — this covers local hooks, custom repos, or
     anything not sourced from a hoko capability.
     """
-    user_owned = [repo for repo in existing_repos if repo.get("repo") not in MANAGED_REPO_URLS]
+    user_owned = [
+        repo for repo in existing_repos if repo.get("repo") not in MANAGED_REPO_URLS
+    ]
     return user_owned + managed_repos
 
 
@@ -144,7 +146,7 @@ def required_hook_types(config: HokoConfig) -> list[str]:
     return hook_types
 
 
-def install_hooks(config: HokoConfig | None = None) -> bool:
+def install_hooks(config: HokoConfig | None = None, quiet: bool = False) -> bool:
     command = resolve_command()
     if command is None:
         return False
@@ -154,7 +156,10 @@ def install_hooks(config: HokoConfig | None = None) -> bool:
     for hook_type in required_hook_types(config):
         arguments += ["--hook-type", hook_type]
 
-    result = subprocess.run([*command, "install", *arguments])
+    # `pre-commit install` writes its own confirmation line straight to the
+    # inherited stdout. Callers that need clean, parseable stdout (e.g.
+    # `hoko doctor --json`) pass quiet=True to capture it instead.
+    result = subprocess.run([*command, "install", *arguments], capture_output=quiet)
     return result.returncode == 0
 
 
@@ -175,6 +180,14 @@ def run_all_hooks() -> int:
 def health_checks(config: HokoConfig) -> list[HealthCheck]:
     return [
         HealthCheck("pre-commit available", is_installed()),
-        HealthCheck("Hooks installed", (Path(".git") / "hooks" / "pre-commit").exists()),
+        HealthCheck(
+            "Hooks installed", (Path(".git") / "hooks" / "pre-commit").exists()
+        ),
         HealthCheck("Configuration valid", Path(CONFIG_FILENAME).exists()),
     ]
+
+
+def health_score(checks: list[HealthCheck]) -> int:
+    """The 0-100 score `doctor` and `fleet` both report, derived from `health_checks`."""
+    passed = sum(1 for check in checks if check.ok)
+    return int(100 * passed / len(checks)) if checks else 100

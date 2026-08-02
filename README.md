@@ -22,6 +22,7 @@ No YAML. No copy-paste. No setup guides.
 ## Contents
 
 - [Why Hoko](#why-hoko)
+- [How Hoko compares](#how-hoko-compares)
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [Commands](#commands)
@@ -55,6 +56,26 @@ Hoko replaces all of that with a small set of commands operating on **capabiliti
 - Never require hand-editing YAML
 - Safe and idempotent — running a command twice is a no-op, not a corruption risk
 - Cross-platform, plugin-friendly architecture
+
+---
+
+## How Hoko compares
+
+Hoko is **not a replacement for pre-commit** — it's built directly on top of it. Hoko shells out to the `pre-commit` binary and generates `.pre-commit-config.yaml` for you; if you're already happy hand-writing that file and tracking hook repos and revisions yourself, you don't need Hoko. What Hoko removes is the research and upkeep: deciding which hook repo to use, pinning a revision, merging it into existing YAML without clobbering hooks you added by hand, and doing all of that again for the next repo and the next tool update.
+
+Husky solves a narrower, adjacent problem: it wires git hook *events* (`pre-commit`, `commit-msg`, ...) to scripts you already have, typically paired with `lint-staged` to scope them to staged files. It doesn't help you decide which tools to run or install them, and it's npm/Node-specific — a polyglot repo (Python + Go + JS) needs separate hook plumbing per ecosystem. Hoko and pre-commit are language-agnostic by design.
+
+| | Husky | pre-commit | Hoko |
+|---|---|---|---|
+| What it manages | Wiring git hook events to scripts you provide | Git hooks + hook-tool installation, via a YAML config you author | Same engine as pre-commit, but generates and merges that config for you |
+| Choosing a tool | You decide and wire it up yourself | You decide, then find and pin the hook repo + revision | Hoko resolves the tool per detected ecosystem (`formatting` → Ruff, Prettier, gofmt, or rustfmt) |
+| Cross-language repos | No — npm/Node-oriented | Yes | Yes |
+| Keeping hooks current | Manual | `pre-commit autoupdate`, invoked by hand | `hoko update` — same mechanism, same command surface as everything else |
+| Health/audit | None | None built in | `hoko doctor` scores the repo and flags missing or stale setup |
+| Sharing a setup across repos | Copy config files by hand | Copy `.pre-commit-config.yaml` by hand | `hoko export` / `hoko import` |
+| Config you hand-edit | Hook scripts | `.pre-commit-config.yaml` | None — `hoko add`/`hoko rm` only |
+
+If you already know exactly which hooks you want and are comfortable maintaining the YAML yourself, plain pre-commit is one less layer. Hoko is for the more common case: you know you want "formatting" and "secret scanning" on every repo, not which specific tool and pinned revision that means this month.
 
 ---
 
@@ -119,11 +140,12 @@ Repository Health
 | `hoko add [capability]...` | Installs one or more capabilities and updates `.pre-commit-config.yaml`. Run without arguments to pick from an interactive list. |
 | `hoko rm [capability]...` | Removes one or more capabilities. Run without arguments to pick from an interactive list. |
 | `hoko list` | Lists installed capabilities. |
-| `hoko doctor` | Scores repository health (0–100) and flags issues such as missing hooks or stale configuration. |
+| `hoko doctor [--fix] [--json]` | Scores repository health (0–100) and flags issues such as missing hooks or stale configuration. `--fix` reapplies the configured capabilities to repair what it finds. `--json` prints a machine-readable report (score, capabilities, checks) for CI or dashboards instead. |
 | `hoko update` | Updates all managed hook versions to their latest release. |
 | `hoko check` | Runs every configured hook without creating a commit — built for CI. |
 | `hoko export [path]` | Writes installed capabilities to a preset file (defaults to `hoko.yaml`). |
 | `hoko import <path>` | Installs every capability listed in a preset file. |
+| `hoko fleet <repo>... [--fix] [--json]` | Runs `doctor` (and optionally `--fix`) across many repos at once, then reports a rollup. |
 
 Every command exposes `--help` for full option details:
 
@@ -157,6 +179,56 @@ Run `hoko add` or `hoko rm` without arguments to pick capabilities from a list. 
     pipx install hoko
     hoko check
 ```
+
+### Using `hoko doctor --json` for CI or dashboards
+
+`hoko doctor --json` prints nothing but a single JSON object — safe to pipe into `jq` or a dashboard ingester:
+
+```bash
+hoko doctor --json
+```
+
+```json
+{
+  "score": 100,
+  "capabilities": ["python", "formatting", "secrets"],
+  "fix_attempted": false,
+  "checks": [
+    { "message": "pre-commit available", "ok": true },
+    { "message": "Hooks installed", "ok": true },
+    { "message": "Configuration valid", "ok": true }
+  ]
+}
+```
+
+Combine with `--fix` to repair and report in one step — `fix_attempted` tells you whether remediation ran, `score` tells you whether it worked:
+
+```bash
+hoko doctor --fix --json
+```
+
+### Checking many repos at once with `hoko fleet`
+
+For an org with more than one repo, `hoko fleet` runs the same health check (and, with `--fix`, the same repair) across all of them and reports a rollup:
+
+```bash
+hoko fleet ~/dev/service-a ~/dev/service-b ~/dev/service-c
+```
+
+```
+                 Fleet Health
+┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃ Repo       ┃     Score ┃ Status            ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│ service-a  │ 100 / 100 │ ✓ healthy         │
+│ service-b  │  66 / 100 │ ⚠ needs attention │
+│ service-c  │ 100 / 100 │ ✓ healthy         │
+└────────────┴───────────┴───────────────────┘
+
+2 / 3 repositories healthy.
+```
+
+Add `--fix` to repair every unhealthy repo in the same pass, and `--json` for a machine-readable rollup (`{"repos": [...], "summary": {"count", "healthy", "errors"}}`) suitable for a scheduled job or compliance dashboard. A path that doesn't exist or isn't a git repository is reported as an error for that repo rather than aborting the whole run.
 
 ---
 
@@ -247,7 +319,7 @@ pre-commit Adapter    hoko/adapters/precommit.py  (.pre-commit-config.yaml)
 ```
 hoko/
 ├── cli/            entry point (Typer app)
-├── commands/        init, add, rm, list, doctor, update, check, export, import
+├── commands/        init, add, rm, list, doctor, update, check, export, import, fleet
 ├── capabilities/     capability registry
 ├── detection/        project + tooling detection, recommendations
 ├── config/           HokoConfig model (hoko.yaml)
