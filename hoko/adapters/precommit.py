@@ -10,6 +10,7 @@ from ruamel.yaml import YAML
 from hoko.capabilities.registry import get_capability
 from hoko.config.models import HokoConfig
 from hoko.detection.detector import detect_project
+from hoko.generators.hook_repos import repos_for
 from hoko.generators.hooks import hook_ids_for
 
 CONFIG_FILENAME = ".pre-commit-config.yaml"
@@ -36,15 +37,15 @@ def ensure_installed() -> None:
 def render_repos(config: HokoConfig) -> list[dict]:
     """Build the `repos:` section of .pre-commit-config.yaml from installed capabilities."""
     ecosystems = detect_project()
-    repos: list[dict] = []
+    tool_ids: list[str] = []
     for name in config.capabilities:
         capability = get_capability(name)
         if capability is None:
             continue
-        hook_ids = hook_ids_for(capability, ecosystems)
-        if hook_ids:
-            repos.append({"hooks": [{"id": hook_id} for hook_id in hook_ids]})
-    return repos
+        for tool_id in hook_ids_for(capability, ecosystems):
+            if tool_id not in tool_ids:
+                tool_ids.append(tool_id)
+    return repos_for(tool_ids)
 
 
 def write_config(config: HokoConfig, path: Path | None = None) -> None:
