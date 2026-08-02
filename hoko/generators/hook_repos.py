@@ -96,6 +96,12 @@ def get_hook_def(tool_id: str) -> HookDef | None:
     return _HOOK_DEFS.get(tool_id)
 
 
+# Repo URLs hoko owns. Any repo entry in an existing .pre-commit-config.yaml
+# whose `repo` is NOT in this set was added by hand and is left untouched
+# when hoko merges its own managed hooks into the file.
+MANAGED_REPO_URLS: frozenset[str] = frozenset(hook_def.repo for hook_def in _HOOK_DEFS.values())
+
+
 def repos_for(tool_ids: list[str]) -> list[dict]:
     """Group resolved tool ids into `.pre-commit-config.yaml` repo entries.
 
