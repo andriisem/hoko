@@ -109,6 +109,18 @@ def test_write_config_preserves_other_top_level_keys(tmp_path, monkeypatch):
     assert document["default_language_version"]["python"] == "python3.12"
 
 
+def test_required_hook_types_is_just_pre_commit_by_default():
+    assert precommit.required_hook_types(HokoConfig(capabilities=["secrets"])) == ["pre-commit"]
+
+
+def test_required_hook_types_includes_commit_msg_for_commitlint(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    hook_types = precommit.required_hook_types(HokoConfig(capabilities=["secrets", "commitlint"]))
+
+    assert hook_types == ["pre-commit", "commit-msg"]
+
+
 def _fake_which(monkeypatch, found: dict[str | None, str]):
     """Stub shutil.which, keyed by the `path` argument it is called with."""
 

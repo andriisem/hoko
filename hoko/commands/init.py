@@ -5,7 +5,7 @@ import sys
 import typer
 from rich.console import Console
 
-from hoko.adapters import precommit
+from hoko.commands._apply import apply_config
 from hoko.config.models import HokoConfig
 from hoko.detection.detector import SIGNAL_LABELS, detect_project
 from hoko.detection.recommendations import recommended_capabilities
@@ -43,20 +43,6 @@ def run(
             for name in recommended:
                 config.add_capability(name)
 
-    precommit_available = precommit.ensure_installed()
-
-    precommit.write_config(config)
-    config.save()
-
-    if not precommit_available:
-        console.print(
-            "\n[yellow]⚠ pre-commit is missing and hoko could not install it automatically.[/yellow]"
-        )
-        console.print(
-            "  Install it with [bold]pipx install pre-commit[/bold] "
-            "(or [bold]uv tool install pre-commit[/bold]), then run [bold]hoko init[/bold] again."
-        )
-    elif not precommit.install_hooks():
-        console.print("[yellow]⚠ Could not install git hooks (are you in a git repository?)[/yellow]")
+    apply_config(config)
 
     console.print("\n[green]hoko initialized.[/green]")

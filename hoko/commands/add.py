@@ -3,8 +3,8 @@ from __future__ import annotations
 import typer
 from rich.console import Console
 
-from hoko.adapters import precommit
 from hoko.capabilities.registry import get_capability, list_capabilities
+from hoko.commands._apply import apply_config
 from hoko.config.models import HokoConfig
 
 console = Console()
@@ -34,5 +34,4 @@ def run(
         config.add_capability(name)
         console.print(f"[green]✓[/green] Added {capability.name}")
 
-    precommit.write_config(config)
-    config.save()
+    apply_config(config)

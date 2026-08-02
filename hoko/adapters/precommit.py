@@ -17,6 +17,7 @@ from hoko.generators.hook_repos import MANAGED_REPO_URLS, repos_for
 from hoko.generators.hooks import hook_ids_for
 
 CONFIG_FILENAME = ".pre-commit-config.yaml"
+DEFAULT_HOOK_TYPE = "pre-commit"
 
 _yaml = YAML()
 _yaml.preserve_quotes = True
@@ -127,11 +128,33 @@ def write_config(config: HokoConfig, path: Path | None = None) -> None:
         _yaml.dump(document, handle)
 
 
-def install_hooks() -> bool:
+def required_hook_types(config: HokoConfig) -> list[str]:
+    """Git hook types that must be installed for the configured capabilities.
+
+    Most hooks run at the default `pre-commit` stage, but some live elsewhere:
+    commitlint only fires on `commit-msg`, which is a separate git hook file and
+    is never created by a plain `pre-commit install`.
+    """
+    hook_types = [DEFAULT_HOOK_TYPE]
+    for repo in render_repos(config):
+        for hook in repo["hooks"]:
+            for stage in hook.get("stages", []):
+                if stage not in hook_types:
+                    hook_types.append(stage)
+    return hook_types
+
+
+def install_hooks(config: HokoConfig | None = None) -> bool:
     command = resolve_command()
     if command is None:
         return False
-    result = subprocess.run([*command, "install"])
+
+    config = HokoConfig.load() if config is None else config
+    arguments: list[str] = []
+    for hook_type in required_hook_types(config):
+        arguments += ["--hook-type", hook_type]
+
+    result = subprocess.run([*command, "install", *arguments])
     return result.returncode == 0
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from hoko.adapters import precommit
+from hoko.commands._apply import apply_config
 from hoko.config.models import HokoConfig
 
 console = Console()
@@ -16,6 +16,5 @@ def run(
 ) -> None:
     """Install every capability listed in a preset file."""
     config = HokoConfig.import_preset(preset)
-    precommit.write_config(config)
-    config.save()
+    apply_config(config)
     console.print(f"[green]Imported preset from {preset}[/green]")
