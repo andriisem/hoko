@@ -75,9 +75,11 @@ def write_config(config: HokoConfig, path: Path | None = None) -> None:
         _yaml.dump(document, handle)
 
 
-def install_hooks() -> None:
-    if is_installed():
-        subprocess.run(["pre-commit", "install"], check=True)
+def install_hooks() -> bool:
+    if not is_installed():
+        return False
+    result = subprocess.run(["pre-commit", "install"])
+    return result.returncode == 0
 
 
 def update_hooks(config: HokoConfig) -> None:
