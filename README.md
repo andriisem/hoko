@@ -116,8 +116,8 @@ Repository Health
 | Command | Description |
 |---|---|
 | `hoko init [--yes]` | Detects the project, installs `pre-commit` if missing, installs recommended capabilities, and wires up Git hooks. `--yes` skips the confirmation prompt. |
-| `hoko add <capability>...` | Installs one or more capabilities and updates `.pre-commit-config.yaml`. |
-| `hoko remove <capability>...` | Removes one or more capabilities. |
+| `hoko add [capability]...` | Installs one or more capabilities and updates `.pre-commit-config.yaml`. Run without arguments to pick from an interactive list. |
+| `hoko rm [capability]...` | Removes one or more capabilities. Run without arguments to pick from an interactive list. |
 | `hoko list` | Lists installed capabilities. |
 | `hoko doctor` | Scores repository health (0–100) and flags issues such as missing hooks or stale configuration. |
 | `hoko update` | Updates all managed hook versions to their latest release. |
@@ -130,6 +130,24 @@ Every command exposes `--help` for full option details:
 ```bash
 hoko <command> --help
 ```
+
+### Interactive selection
+
+Run `hoko add` or `hoko rm` without arguments to pick capabilities from a list. Use the arrow keys to move, space to toggle, and enter to confirm:
+
+```
+? Which capabilities do you want to install? (space to select, enter to confirm)
+
+  ◯ commitlint  Conventional commit message linting.
+❯ ◉ docker      Dockerfile linting.
+  - formatting  Code formatting for the detected language. (installed)
+  ◯ markdown    Markdown linting.
+  ◉ python      Python linting and type checking.
+  ◯ secrets     Secret scanning.
+  ◯ yaml        YAML linting.
+```
+
+`hoko add` greys out what is already installed, and `hoko rm` lists only what you actually have. Outside a terminal — in CI or when piping — both commands require explicit arguments instead of prompting.
 
 ### Using `hoko check` in CI
 
@@ -229,11 +247,12 @@ pre-commit Adapter    hoko/adapters/precommit.py  (.pre-commit-config.yaml)
 ```
 hoko/
 ├── cli/            entry point (Typer app)
-├── commands/        init, add, remove, list, doctor, update, check, export, import
+├── commands/        init, add, rm, list, doctor, update, check, export, import
 ├── capabilities/     capability registry
 ├── detection/        project + tooling detection, recommendations
 ├── config/           HokoConfig model (hoko.yaml)
 ├── generators/        hook repo / hook definitions
+├── ui/               interactive prompts
 └── adapters/
     └── precommit.py  translates the config model into .pre-commit-config.yaml
 tests/
@@ -261,7 +280,7 @@ Contributions are welcome — please open an issue to discuss significant change
 
 ## Roadmap
 
-- **v0.1** — `init`, `add`, `remove`, `list`, `doctor`, `update`, Python/JavaScript support, formatting, secrets *(current)*
+- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, Python/JavaScript support, formatting, secrets *(current)*
 - **v0.2** — Docker, YAML, Markdown, commit-message hooks, improved project detection
 - **v0.3** — Import/export presets, team presets, plugin system
 - **v1.0** — Stable plugin API, Homebrew distribution, Windows Scoop package, GitHub Action, VS Code extension

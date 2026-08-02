@@ -62,3 +62,7 @@ def get_capability(name: str) -> Capability | None:
 
 def list_capabilities() -> list[str]:
     return sorted(_CAPABILITIES)
+
+
+def all_capabilities() -> list[Capability]:
+    return [_CAPABILITIES[name] for name in sorted(_CAPABILITIES)]
