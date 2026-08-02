@@ -280,10 +280,10 @@ Contributions are welcome — please open an issue to discuss significant change
 
 ## Roadmap
 
-- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, Python/JavaScript support, formatting, secrets *(current)*
-- **v0.2** — Docker, YAML, Markdown, commit-message hooks, improved project detection
-- **v0.3** — Import/export presets, team presets, plugin system
-- **v1.0** — Stable plugin API, Homebrew distribution, Windows Scoop package, GitHub Action, VS Code extension
+- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, `check`, `export`, `import`; Python/JavaScript/Go/Rust formatting, Python lint, secrets, markdown, yaml, docker, commitlint; interactive capability selection; preset export/import *(current — 0.1.6, published on PyPI)*
+- **v0.2** — Hardening: CLI-level tests for `doctor`/`check`/`export`/`import`/`update`, a `doctor` score that reflects per-capability staleness rather than 3 fixed checks, `hoko --version`, standardized `vX.Y.Z` release tags, a `CHANGELOG.md`, and a published (not just drafted) Homebrew formula
+- **v0.3** — Team/org preset sharing beyond a local file, plugin system for third-party capabilities
+- **v1.0** — Stable plugin API, Windows Scoop package, GitHub Action, VS Code extension
 
 ## License
 
