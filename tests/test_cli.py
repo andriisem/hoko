@@ -114,27 +114,6 @@ def test_rm_removes_an_installed_capability(tmp_path, monkeypatch, fake_precommi
     assert HokoConfig.load().capabilities == []
 
 
-def test_remove_still_works_as_a_hidden_alias_for_rm(
-    tmp_path, monkeypatch, fake_precommit
-):
-    monkeypatch.chdir(tmp_path)
-    runner.invoke(app, ["add", "python"])
-
-    result = runner.invoke(app, ["remove", "python"])
-
-    assert result.exit_code == 0
-    assert HokoConfig.load().capabilities == []
-
-
-def test_remove_is_hidden_from_the_command_list(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-
-    result = runner.invoke(app, ["--help"])
-
-    assert " rm " in result.output
-    assert " remove " not in result.output
-
-
 def test_add_without_arguments_prompts_for_capabilities(
     tmp_path, monkeypatch, fake_precommit
 ):
