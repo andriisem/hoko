@@ -7,8 +7,11 @@ from hoko.config.models import HokoConfig
 
 COMMITLINT_CONFIG_FILENAME = ".commitlintrc.yaml"
 
+# Kept within yamllint's default 80-column limit and given an explicit document
+# start, so a repo using both the commitlint and yaml capabilities lints clean.
 _COMMITLINT_CONFIG = """\
-# Created by hoko. Edit freely - hoko never overwrites an existing commitlint config.
+---
+# Created by hoko. Safe to edit - hoko never overwrites an existing config.
 extends:
   - "@commitlint/config-conventional"
 """
