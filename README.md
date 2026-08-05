@@ -145,7 +145,6 @@ Repository Health
 | `hoko check` | Runs every configured hook without creating a commit — built for CI. |
 | `hoko export [path]` | Writes installed capabilities to a preset file (defaults to `hoko.yaml`). |
 | `hoko import <path>` | Installs every capability listed in a preset file. |
-| `hoko fleet <repo>... [--fix] [--json]` | Runs `doctor` (and optionally `--fix`) across many repos at once, then reports a rollup. |
 
 Every command exposes `--help` for full option details:
 
@@ -206,29 +205,6 @@ Combine with `--fix` to repair and report in one step — `fix_attempted` tells 
 ```bash
 hoko doctor --fix --json
 ```
-
-### Checking many repos at once with `hoko fleet`
-
-For an org with more than one repo, `hoko fleet` runs the same health check (and, with `--fix`, the same repair) across all of them and reports a rollup:
-
-```bash
-hoko fleet ~/dev/service-a ~/dev/service-b ~/dev/service-c
-```
-
-```
-                 Fleet Health
-┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
-┃ Repo       ┃     Score ┃ Status            ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
-│ service-a  │ 100 / 100 │ ✓ healthy         │
-│ service-b  │  66 / 100 │ ⚠ needs attention │
-│ service-c  │ 100 / 100 │ ✓ healthy         │
-└────────────┴───────────┴───────────────────┘
-
-2 / 3 repositories healthy.
-```
-
-Add `--fix` to repair every unhealthy repo in the same pass, and `--json` for a machine-readable rollup (`{"repos": [...], "summary": {"count", "healthy", "errors"}}`) suitable for a scheduled job or compliance dashboard. A path that doesn't exist or isn't a git repository is reported as an error for that repo rather than aborting the whole run.
 
 ---
 
@@ -319,7 +295,7 @@ pre-commit Adapter    hoko/adapters/precommit.py  (.pre-commit-config.yaml)
 ```
 hoko/
 ├── cli/            entry point (Typer app)
-├── commands/        init, add, rm, list, doctor, update, check, export, import, fleet
+├── commands/        init, add, rm, list, doctor, update, check, export, import
 ├── capabilities/     capability registry
 ├── detection/        project + tooling detection, recommendations
 ├── config/           HokoConfig model (hoko.yaml)
@@ -352,10 +328,21 @@ Contributions are welcome — please open an issue to discuss significant change
 
 ## Roadmap
 
-- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, `check`, `export`, `import`; Python/JavaScript/Go/Rust formatting, Python lint, secrets, markdown, yaml, docker, commitlint; interactive capability selection; preset export/import *(current — 0.1.6, published on PyPI)*
-- **v0.2** — Hardening: CLI-level tests for `doctor`/`check`/`export`/`import`/`update`, a `doctor` score that reflects per-capability staleness rather than 3 fixed checks, `hoko --version`, standardized `vX.Y.Z` release tags, a `CHANGELOG.md`, and a published (not just drafted) Homebrew formula
-- **v0.3** — Team/org preset sharing beyond a local file, plugin system for third-party capabilities
-- **v1.0** — Stable plugin API, Windows Scoop package, GitHub Action, VS Code extension
+- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, `check`, `export`, `import`; Python/JavaScript/Go/Rust formatting, Python lint, secrets, markdown, yaml, docker, commitlint; interactive capability selection; preset export/import *(current — 0.1.7, published on PyPI)*
+- **v0.2** — Hardening: CLI-level tests for `doctor`/`check`/`export`/`import`/`update`, a `doctor` score that reflects per-capability staleness rather than 3 fixed checks (stale hook revisions, missing companion configs, a missing `commit-msg` hook for capabilities that need one), `hoko --version`, standardized `vX.Y.Z` release tags, a `CHANGELOG.md`, and a published (not just drafted) Homebrew formula
+- **v0.3** — Agent capabilities & extensibility:
+  - `hoko agent add <name>` / `hoko agent rm` / `hoko agent list` — a separate namespace from hook capabilities, same interaction model as `hoko add`/`rm`/`list`
+  - Agent capability registry to start: `code-review`, `infra-review` (IaC), `docs`, `dependency-audit`
+  - Each agent capability resolves to a scoped system prompt, a least-privilege tool/permission manifest, and trigger wiring (PR-opened GitHub Actions workflow first; a git hook as a secondary trigger) — mirroring how `formatting` resolves to a concrete pre-commit hook today
+  - New `hoko/adapters/agent_ci.py`: generates and merges a GitHub Actions workflow YAML non-destructively, the same principle `precommit.py` already applies to `.pre-commit-config.yaml`
+  - A per-agent budget ceiling baked into the generated workflow config, not left to runtime defaults
+  - Hoko stays a provisioner, not a runtime: it never calls an LLM itself, only generates config for an existing runtime — scoped to one supported target initially rather than an abstract multi-runtime API
+  - Team/org preset sharing beyond a local file (e.g. import by URL), plugin system for third-party hook capabilities
+- **v1.0** — Stable plugin API (hook and agent capabilities), Windows Scoop package, GitHub Action wrapping `hoko check`, VS Code extension
+
+### Removed: `fleet`
+
+`hoko fleet` (multi-repo `doctor` rollup) shipped in 0.1.7 and has been pulled. It added a table/JSON renderer over `doctor` looped across paths — everything it did is reproducible today with `for r in $repos; do (cd "$r" && hoko doctor --json); done | jq -s .`. It also targeted a platform/org-audit persona nothing else in hoko serves, and inherited `doctor`'s current shallow health score. Revisit only once `doctor`'s score reflects real signal (see v0.2) and there's actual multi-repo demand — until then it's not worth the surface area.
 
 ## License
 

@@ -188,6 +188,6 @@ def health_checks(config: HokoConfig) -> list[HealthCheck]:
 
 
 def health_score(checks: list[HealthCheck]) -> int:
-    """The 0-100 score `doctor` and `fleet` both report, derived from `health_checks`."""
+    """The 0-100 score `doctor` reports, derived from `health_checks`."""
     passed = sum(1 for check in checks if check.ok)
     return int(100 * passed / len(checks)) if checks else 100
