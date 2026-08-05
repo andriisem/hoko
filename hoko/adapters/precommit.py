@@ -15,6 +15,7 @@ from hoko.config.models import HokoConfig
 from hoko.detection.detector import detect_project
 from hoko.generators.hook_repos import MANAGED_REPO_URLS, repos_for
 from hoko.generators.hooks import hook_ids_for
+from hoko.generators.tool_configs import missing_commitlint_config
 
 CONFIG_FILENAME = ".pre-commit-config.yaml"
 DEFAULT_HOOK_TYPE = "pre-commit"
@@ -109,17 +110,70 @@ def _load_document(path: Path) -> dict:
     return document if document is not None else {"repos": []}
 
 
+def _numeric_version(rev: str) -> tuple[int, ...] | None:
+    """Best-effort numeric version tuple from a tag like `v0.6.9` or `v4.0.0-alpha.8`.
+
+    Only the leading dotted-numeric run is used - `v4.0.0-alpha.8` reads as
+    (4, 0, 0), a pre-release suffix isn't weighed. Returns None for tags that
+    don't start with a comparable numeric segment (e.g. a hand-picked branch
+    name); callers must treat that as "can't tell", never as "older".
+    """
+    text = rev[1:] if rev.startswith("v") else rev
+    prefix = text.split("-")[0].split("+")[0]
+    numbers: list[int] = []
+    for part in prefix.split("."):
+        if not part.isdigit():
+            break
+        numbers.append(int(part))
+    return tuple(numbers) if numbers else None
+
+
+def _is_older(rev: str, than: str) -> bool:
+    """True only when `rev` is a strictly older, comparable version than `than`.
+
+    Unparseable or equal revs are never reported as older - staleness
+    detection would rather stay silent than wrongly flag (or downgrade) a
+    pin it can't confidently compare.
+    """
+    current = _numeric_version(rev)
+    reference = _numeric_version(than)
+    if current is None or reference is None:
+        return False
+    return current < reference
+
+
 def _merge_repos(existing_repos: list, managed_repos: list[dict]) -> list:
-    """Keep repos the user added by hand; replace hoko's own repos with fresh ones.
+    """Keep repos the user added by hand; refresh hoko's own repos in place.
 
     A repo counts as "hand-added" if its `repo:` URL isn't one hoko manages
     (see MANAGED_REPO_URLS) — this covers local hooks, custom repos, or
     anything not sourced from a hoko capability.
+
+    For a managed repo, the hook list always comes from `managed_repos` (it
+    must reflect the currently configured capabilities), but its `rev` is
+    only bumped up to hoko's bundled default when the existing pin is older -
+    never downgraded. `hoko update` (via `pre-commit autoupdate`) is free to
+    move a managed repo's rev ahead of hoko's own bundled pin; regenerating
+    the file must not silently undo that, or "safe and idempotent" stops
+    being true for anyone who has ever run `hoko update`.
     """
     user_owned = [
         repo for repo in existing_repos if repo.get("repo") not in MANAGED_REPO_URLS
     ]
-    return user_owned + managed_repos
+    existing_rev_by_repo = {
+        repo.get("repo"): repo.get("rev")
+        for repo in existing_repos
+        if repo.get("repo") in MANAGED_REPO_URLS
+    }
+
+    refreshed_managed = []
+    for repo in managed_repos:
+        existing_rev = existing_rev_by_repo.get(repo["repo"])
+        if existing_rev and not _is_older(existing_rev, repo["rev"]):
+            repo = {**repo, "rev": existing_rev}
+        refreshed_managed.append(repo)
+
+    return user_owned + refreshed_managed
 
 
 def write_config(config: HokoConfig, path: Path | None = None) -> None:
@@ -177,14 +231,50 @@ def run_all_hooks() -> int:
     return result.returncode
 
 
-def health_checks(config: HokoConfig) -> list[HealthCheck]:
+def _stale_managed_repos(config: HokoConfig, path: Path | None = None) -> list[str]:
+    """Managed repo URLs whose pinned rev is older than hoko's bundled default.
+
+    A repo missing from the file entirely isn't reported here - that's the
+    "Configuration valid" / hooks-installed checks' job. This only flags a
+    rev that's present and behind, per `_is_older`'s conservative rules.
+    """
+    path = path or Path(CONFIG_FILENAME)
+    current_rev_by_repo = {
+        repo.get("repo"): repo.get("rev")
+        for repo in _load_document(path).get("repos") or []
+    }
     return [
-        HealthCheck("pre-commit available", is_installed()),
-        HealthCheck(
-            "Hooks installed", (Path(".git") / "hooks" / "pre-commit").exists()
-        ),
-        HealthCheck("Configuration valid", Path(CONFIG_FILENAME).exists()),
+        repo["repo"]
+        for repo in render_repos(config)
+        if _is_older(current_rev_by_repo.get(repo["repo"], repo["rev"]), repo["rev"])
     ]
+
+
+def health_checks(config: HokoConfig) -> list[HealthCheck]:
+    checks = [HealthCheck("pre-commit available", is_installed())]
+
+    for hook_type in required_hook_types(config):
+        label = (
+            "Hooks installed"
+            if hook_type == DEFAULT_HOOK_TYPE
+            else f"{hook_type} hook installed"
+        )
+        checks.append(HealthCheck(label, (Path(".git") / "hooks" / hook_type).exists()))
+
+    checks.append(HealthCheck("Configuration valid", Path(CONFIG_FILENAME).exists()))
+    checks.append(
+        HealthCheck("Hook versions current", not _stale_managed_repos(config))
+    )
+
+    if "commitlint" in config.capabilities:
+        checks.append(
+            HealthCheck(
+                "Commitlint config present",
+                not missing_commitlint_config(config),
+            )
+        )
+
+    return checks
 
 
 def health_score(checks: list[HealthCheck]) -> int:

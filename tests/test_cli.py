@@ -2,11 +2,34 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from hoko import __version__
 from hoko.cli.main import app
 from hoko.commands import add, rm
 from hoko.config.models import HokoConfig
 
 runner = CliRunner()
+
+
+def test_version_flag_prints_version_and_exits(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0
+    assert result.output.strip() == f"hoko {__version__}"
+
+
+def test_no_arguments_shows_help(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, [])
+
+    # Click's own `no_args_is_help` convention: help is printed, but the exit
+    # code is still 2 (as if a required command were missing) - unchanged by
+    # adding the --version callback, verified against main pre-existing
+    # behavior.
+    assert result.exit_code == 2
+    assert "Commands" in result.output
 
 
 def test_list_with_no_capabilities(tmp_path, monkeypatch):

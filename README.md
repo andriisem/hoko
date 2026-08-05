@@ -126,8 +126,10 @@ Repository Health
 
 100 / 100
 
+✓ pre-commit available
 ✓ Hooks installed
 ✓ Configuration valid
+✓ Hook versions current
 ```
 
 ---
@@ -195,7 +197,8 @@ hoko doctor --json
   "checks": [
     { "message": "pre-commit available", "ok": true },
     { "message": "Hooks installed", "ok": true },
-    { "message": "Configuration valid", "ok": true }
+    { "message": "Configuration valid", "ok": true },
+    { "message": "Hook versions current", "ok": true }
   ]
 }
 ```
@@ -328,8 +331,16 @@ Contributions are welcome — please open an issue to discuss significant change
 
 ## Roadmap
 
-- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, `check`, `export`, `import`; Python/JavaScript/Go/Rust formatting, Python lint, secrets, markdown, yaml, docker, commitlint; interactive capability selection; preset export/import *(current — 0.1.7, published on PyPI)*
-- **v0.2** — Hardening: CLI-level tests for `doctor`/`check`/`export`/`import`/`update`, a `doctor` score that reflects per-capability staleness rather than 3 fixed checks (stale hook revisions, missing companion configs, a missing `commit-msg` hook for capabilities that need one), `hoko --version`, standardized `vX.Y.Z` release tags, a `CHANGELOG.md`, and a published (not just drafted) Homebrew formula
+- **v0.1** — `init`, `add`, `rm`, `list`, `doctor`, `update`, `check`, `export`, `import`; Python/JavaScript/Go/Rust formatting, Python lint, secrets, markdown, yaml, docker, commitlint; interactive capability selection; preset export/import *(shipped, 0.1.0–0.1.7, published on PyPI)*
+- **v0.2** — Hardening *(current — 0.2.0)*:
+  - CLI-level tests for `check`/`export`/`import`/`update` (`doctor` already had them)
+  - `doctor` checks every required git hook type (a missing `commit-msg` hook for `commitlint` used to read as "Hooks installed ✓"), flags a managed hook pinned behind hoko's bundled default ("Hook versions current"), and flags a missing `.commitlintrc.yaml` when `commitlint` is installed
+  - Regenerating `.pre-commit-config.yaml` (e.g. via `hoko doctor --fix`) never downgrades a rev `pre-commit autoupdate` has already moved ahead of hoko's bundled default
+  - `hoko --version`, sourced from installed package metadata — no more hand-duplicated version string
+  - `hoko import <missing-file>` now fails immediately instead of silently writing an empty `hoko.yaml`
+  - `vX.Y.Z` release tags standardized going forward (documented in `CHANGELOG.md`; early mixed tags left as-is since they're already public)
+  - `CHANGELOG.md` added
+  - Homebrew formula's release tarball `sha256` filled in against the real published `v0.1.7` archive — publishing it to a tap is still a manual, separate step
 - **v0.3** — Agent capabilities & extensibility:
   - `hoko agent add <name>` / `hoko agent rm` / `hoko agent list` — a separate namespace from hook capabilities, same interaction model as `hoko add`/`rm`/`list`
   - Agent capability registry to start: `code-review`, `infra-review` (IaC), `docs`, `dependency-audit`

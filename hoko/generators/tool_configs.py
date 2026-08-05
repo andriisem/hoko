@@ -48,6 +48,17 @@ def _has_commitlint_config(root: Path) -> bool:
     return isinstance(document, dict) and "commitlint" in document
 
 
+def missing_commitlint_config(config: HokoConfig, root: Path | None = None) -> bool:
+    """True if the commitlint capability is installed but has no config of its own.
+
+    Shared by `ensure_tool_configs` (which writes the missing file) and
+    `doctor` (which just reports the gap) so the two never disagree about
+    what "has a commitlint config" means.
+    """
+    root = root or Path(".")
+    return "commitlint" in config.capabilities and not _has_commitlint_config(root)
+
+
 def ensure_tool_configs(config: HokoConfig, root: Path | None = None) -> list[str]:
     """Write companion config files that hooks need but pre-commit cannot supply.
 
@@ -58,7 +69,7 @@ def ensure_tool_configs(config: HokoConfig, root: Path | None = None) -> list[st
     root = root or Path(".")
     created: list[str] = []
 
-    if "commitlint" in config.capabilities and not _has_commitlint_config(root):
+    if missing_commitlint_config(config, root):
         (root / COMMITLINT_CONFIG_FILENAME).write_text(_COMMITLINT_CONFIG)
         created.append(COMMITLINT_CONFIG_FILENAME)
 
