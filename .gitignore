@@ -11,3 +11,6 @@ build/
 # Artifacts of dogfooding hoko on this repo
 /.pre-commit-config.yaml
 /hoko.yaml
+
+# Local design notes, not for public tracking
+/tech-spec.md
