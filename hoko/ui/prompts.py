@@ -27,6 +27,7 @@ class Option:
     label: str
     hint: str = ""
     disabled: str = ""
+    checked: bool = False
 
 
 def is_interactive() -> bool:
@@ -48,6 +49,7 @@ def multiselect(message: str, options: list[Option]) -> list[str]:
             title=_title(option, label_width),
             value=option.value,
             disabled=option.disabled or None,
+            checked=option.checked,
         )
         for option in options
     ]

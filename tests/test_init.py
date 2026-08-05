@@ -2,6 +2,7 @@ from typer.testing import CliRunner
 
 from hoko.adapters import precommit
 from hoko.cli.main import app
+from hoko.commands import init
 from hoko.config.models import HokoConfig
 
 runner = CliRunner()
@@ -70,6 +71,81 @@ def test_init_persists_config_even_if_hook_install_fails(
 
     assert result.exit_code == 0
     assert "Could not install git hooks" in result.output
+    assert "secrets" in HokoConfig.load().capabilities
+
+
+def test_init_interactively_offers_the_full_catalog_pre_checking_recommended(
+    tmp_path, monkeypatch, fake_precommit
+):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "Dockerfile").write_text("")
+    monkeypatch.setattr(init, "is_interactive", lambda: True)
+
+    offered = {}
+
+    def capture(message, options):
+        offered.update({option.value: option.checked for option in options})
+        return [name for name, checked in offered.items() if checked]
+
+    monkeypatch.setattr(init, "multiselect", capture)
+
+    result = runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0
+    # Recommended capabilities arrive pre-checked...
+    assert offered["secrets"] is True
+    assert offered["docker"] is True
+    # ...but the full catalog is offered, not just the recommended subset.
+    assert "python" in offered
+    assert offered["python"] is False
+
+
+def test_init_interactive_selection_can_drop_a_recommended_capability(
+    tmp_path, monkeypatch, fake_precommit
+):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "Dockerfile").write_text("")
+    monkeypatch.setattr(init, "is_interactive", lambda: True)
+    # Simulate unchecking "docker" before confirming.
+    monkeypatch.setattr(init, "multiselect", lambda message, options: ["secrets"])
+
+    result = runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0
+    capabilities = HokoConfig.load().capabilities
+    assert "secrets" in capabilities
+    assert "docker" not in capabilities
+
+
+def test_init_interactive_can_opt_into_a_non_recommended_capability(
+    tmp_path, monkeypatch, fake_precommit
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(init, "is_interactive", lambda: True)
+    monkeypatch.setattr(
+        init, "multiselect", lambda message, options: ["secrets", "python"]
+    )
+
+    result = runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0
+    assert "python" in HokoConfig.load().capabilities
+
+
+def test_init_yes_skips_the_interactive_picker_even_if_a_tty(
+    tmp_path, monkeypatch, fake_precommit
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(init, "is_interactive", lambda: True)
+
+    def fail_if_called(message, options):
+        raise AssertionError("multiselect should not be called with --yes")
+
+    monkeypatch.setattr(init, "multiselect", fail_if_called)
+
+    result = runner.invoke(app, ["init", "--yes"])
+
+    assert result.exit_code == 0
     assert "secrets" in HokoConfig.load().capabilities
 
 

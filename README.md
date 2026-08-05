@@ -57,7 +57,7 @@ pip install hoko
 
 | Command | Description |
 |---|---|
-| `hoko init [--yes]` | Detect the project, install `pre-commit` if missing, install recommended capabilities, wire up git hooks. |
+| `hoko init [--yes]` | Detect the project, install `pre-commit` if missing, wire up git hooks. Interactively lets you pick capabilities (recommended ones pre-checked); `--yes` installs the recommended set without asking. |
 | `hoko add [capability]...` | Install capabilities. No arguments opens an interactive picker. |
 | `hoko rm [capability]...` | Remove capabilities. No arguments opens an interactive picker. |
 | `hoko list` | List installed capabilities. |
@@ -68,7 +68,7 @@ pip install hoko
 | `hoko import <path>` | Install every capability listed in a preset file. |
 | `hoko --version` | Print the installed version. |
 
-Every command takes `--help`. `hoko add`/`hoko rm` grey out what's already installed and require explicit arguments outside a terminal (CI, pipes). `hoko doctor --json` and `hoko check` are built for CI — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for a working example.
+Every command takes `--help`. `hoko init`/`hoko add`/`hoko rm` share the same checkbox picker (space to toggle, enter to confirm); outside a terminal (CI, pipes) `add`/`rm` require explicit arguments instead, and `init` without `--yes` just skips installing anything beyond the base setup. `hoko doctor --json` and `hoko check` are built for CI — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for a working example.
 
 ## Capabilities
 
