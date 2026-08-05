@@ -35,6 +35,12 @@ tag, rather than writing them by hand.
   ahead of hoko's bundled default, regenerating `.pre-commit-config.yaml`
   (e.g. via `hoko doctor --fix`) preserves it instead of reverting to the
   older bundled pin
+- `hoko init`'s recommended-capabilities step no longer gates everything
+  behind one yes/no "Continue?" prompt. It now opens the same checkbox
+  picker `hoko add`/`hoko rm` use, over the full capability catalog, with
+  detection's recommendations pre-checked - accept some and skip others in
+  one pass instead of accepting all then running `hoko rm`. `--yes` still
+  installs the recommended set without prompting.
 
 ### Fixed
 
