@@ -41,8 +41,13 @@ def test_doctor_fix_prints_a_before_and_after_report(
 
     assert result.exit_code == 0
     assert result.output.count("Repository Health") == 2
-    assert "33 / 100" in result.output
-    assert "66 / 100" in result.output
+    # No capabilities installed, no real .git directory in this tmp_path (the
+    # fake pre-commit fixture only records commands, it never touches disk),
+    # so "Hooks installed" never turns true here either side of --fix.
+    # Before: pre-commit available + Hook versions current pass (2/4).
+    assert "50 / 100" in result.output
+    # After: Configuration valid also starts passing (3/4).
+    assert "75 / 100" in result.output
 
 
 def test_doctor_does_not_touch_the_repo_without_fix(tmp_path, monkeypatch):
@@ -78,6 +83,7 @@ def test_doctor_json_reports_score_capabilities_and_checks(
         "pre-commit available",
         "Hooks installed",
         "Configuration valid",
+        "Hook versions current",
     }
 
 
@@ -106,7 +112,11 @@ def test_doctor_json_fix_reports_fix_attempted_and_post_fix_state(
 
     payload = json.loads(result.output)
     assert payload["fix_attempted"] is True
-    assert payload["score"] == 66
+    # 3 of 4 checks pass: pre-commit available, Configuration valid (just
+    # repaired), Hook versions current. "Hooks installed" stays false - this
+    # tmp_path has no real .git directory for the fake pre-commit fixture to
+    # touch.
+    assert payload["score"] == 75
     config_check = next(
         c for c in payload["checks"] if c["message"] == "Configuration valid"
     )

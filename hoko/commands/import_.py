@@ -12,7 +12,12 @@ console = Console()
 
 
 def run(
-    preset: Path = typer.Argument(..., help="Path to a hoko preset file."),
+    preset: Path = typer.Argument(
+        ...,
+        help="Path to a hoko preset file.",
+        exists=True,
+        dir_okay=False,
+    ),
 ) -> None:
     """Install every capability listed in a preset file."""
     config = HokoConfig.import_preset(preset)

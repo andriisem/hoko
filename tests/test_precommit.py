@@ -207,8 +207,9 @@ def test_ensure_installed_never_shells_out_to_bare_pip(monkeypatch):
     monkeypatch.setattr(
         precommit.subprocess,
         "run",
-        lambda command, **kwargs: commands.append(command)
-        or subprocess.CompletedProcess(command, 1),
+        lambda command, **kwargs: (
+            commands.append(command) or subprocess.CompletedProcess(command, 1)
+        ),
     )
 
     assert precommit.ensure_installed() is False
@@ -238,3 +239,124 @@ def test_ensure_installed_survives_a_missing_installer(monkeypatch):
     monkeypatch.setattr(precommit.subprocess, "run", run)
 
     assert precommit.ensure_installed() is False
+
+
+def _set_detect_secrets_rev(rev: str) -> None:
+    document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
+    for repo in document["repos"]:
+        if repo["repo"].endswith("detect-secrets"):
+            repo["rev"] = rev
+    with Path(".pre-commit-config.yaml").open("w") as handle:
+        _yaml.dump(document, handle)
+
+
+def test_is_older_detects_a_behind_pin():
+    assert precommit._is_older("v1.4.0", "v1.5.0") is True
+
+
+def test_is_older_treats_an_equal_pin_as_not_older():
+    assert precommit._is_older("v1.5.0", "v1.5.0") is False
+
+
+def test_is_older_treats_an_ahead_pin_as_not_older():
+    assert precommit._is_older("v2.0.0", "v1.5.0") is False
+
+
+def test_is_older_is_silent_on_unparseable_revs():
+    assert precommit._is_older("main", "v1.5.0") is False
+    assert precommit._is_older("v1.5.0", "some-branch") is False
+
+
+def test_write_config_bumps_a_pin_older_than_hokos_default(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = HokoConfig(capabilities=["secrets"])
+    write_config(config)
+    _set_detect_secrets_rev("v1.0.0")
+
+    write_config(config)
+
+    document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
+    repo = next(r for r in document["repos"] if r["repo"].endswith("detect-secrets"))
+    assert repo["rev"] != "v1.0.0"
+
+
+def test_write_config_never_downgrades_a_pin_ahead_of_hokos_default(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    config = HokoConfig(capabilities=["secrets"])
+    write_config(config)
+    # Simulate `pre-commit autoupdate` (via `hoko update`) moving the pin
+    # ahead of hoko's own bundled default.
+    _set_detect_secrets_rev("v9.9.9")
+
+    write_config(config)
+
+    document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
+    repo = next(r for r in document["repos"] if r["repo"].endswith("detect-secrets"))
+    assert repo["rev"] == "v9.9.9"
+
+
+def test_health_checks_flags_a_stale_hook_pin(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = HokoConfig(capabilities=["secrets"])
+    write_config(config)
+    _set_detect_secrets_rev("v1.0.0")
+
+    checks = precommit.health_checks(config)
+
+    stale_check = next(c for c in checks if c.message == "Hook versions current")
+    assert stale_check.ok is False
+
+
+def test_health_checks_does_not_flag_an_autoupdated_pin_as_stale(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = HokoConfig(capabilities=["secrets"])
+    write_config(config)
+    _set_detect_secrets_rev("v9.9.9")
+
+    checks = precommit.health_checks(config)
+
+    stale_check = next(c for c in checks if c.message == "Hook versions current")
+    assert stale_check.ok is True
+
+
+def test_health_checks_include_commit_msg_hook_and_config_checks_for_commitlint():
+    checks = precommit.health_checks(HokoConfig(capabilities=["commitlint"]))
+
+    assert any(c.message == "commit-msg hook installed" for c in checks)
+    assert any(c.message == "Commitlint config present" for c in checks)
+
+
+def test_health_checks_omit_commitlint_only_checks_when_not_installed():
+    checks = precommit.health_checks(HokoConfig(capabilities=["secrets"]))
+
+    assert not any(c.message == "commit-msg hook installed" for c in checks)
+    assert not any(c.message == "Commitlint config present" for c in checks)
+
+
+def test_health_checks_reports_a_missing_commitlint_config(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = HokoConfig(capabilities=["commitlint"])
+
+    checks = precommit.health_checks(config)
+
+    commitlint_check = next(
+        c for c in checks if c.message == "Commitlint config present"
+    )
+    assert commitlint_check.ok is False
+
+
+def test_health_checks_passes_once_the_commitlint_config_exists(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config = HokoConfig(capabilities=["commitlint"])
+    from hoko.generators.tool_configs import ensure_tool_configs
+
+    ensure_tool_configs(config)
+
+    checks = precommit.health_checks(config)
+
+    commitlint_check = next(
+        c for c in checks if c.message == "Commitlint config present"
+    )
+    assert commitlint_check.ok is True
