@@ -12,6 +12,8 @@ tag, rather than writing them by hand.
 
 ## [Unreleased]
 
+## [v0.2.1] - 2026-08-07
+
 ### Added
 
 - `hoko --version`, backed by a single source of truth for the version
