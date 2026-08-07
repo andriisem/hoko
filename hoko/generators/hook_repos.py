@@ -57,11 +57,6 @@ _HOOK_DEFS: dict[str, HookDef] = {
         rev="v1.0",
         hook_id="fmt",
     ),
-    "detect-secrets": HookDef(
-        repo="https://github.com/Yelp/detect-secrets",
-        rev="v1.5.0",
-        hook_id="detect-secrets",
-    ),
     "gitleaks": HookDef(
         repo="https://github.com/gitleaks/gitleaks",
         rev="v8.18.4",
@@ -99,7 +94,9 @@ def get_hook_def(tool_id: str) -> HookDef | None:
 # Repo URLs hoko owns. Any repo entry in an existing .pre-commit-config.yaml
 # whose `repo` is NOT in this set was added by hand and is left untouched
 # when hoko merges its own managed hooks into the file.
-MANAGED_REPO_URLS: frozenset[str] = frozenset(hook_def.repo for hook_def in _HOOK_DEFS.values())
+MANAGED_REPO_URLS: frozenset[str] = frozenset(
+    hook_def.repo for hook_def in _HOOK_DEFS.values()
+)
 
 
 def repos_for(tool_ids: list[str]) -> list[dict]:

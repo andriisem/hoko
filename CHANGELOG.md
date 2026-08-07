@@ -47,6 +47,15 @@ tag, rather than writing them by hand.
 - `hoko import <missing-file>` used to silently succeed with an empty
   `hoko.yaml` instead of failing; it now errors immediately if the preset
   file doesn't exist
+- `secrets` resolved to *both* `detect-secrets` and `gitleaks`, so
+  `hoko add secrets` silently installed two overlapping scanners on every
+  commit. It now resolves to `gitleaks` only — a static binary with no
+  pre-commit venv to build and no baseline file to maintain, unlike
+  `detect-secrets`, which is dropped
+- `hoko rm commitlint` left `.commitlintrc.yaml` behind after removing the
+  capability that needed it. It's now deleted along with the capability —
+  but only if its contents still match what hoko generated, so a config
+  you've since hand-edited is never touched
 
 ### Removed
 

@@ -76,7 +76,7 @@ Every command takes `--help`. `hoko init`/`hoko add`/`hoko rm` share the same ch
 |---|---|---|
 | `python` | Linting and type checking | Ruff, mypy |
 | `formatting` | Code formatting | Ruff Formatter, Prettier, gofmt, rustfmt |
-| `secrets` | Secret scanning | detect-secrets, gitleaks |
+| `secrets` | Secret scanning | gitleaks |
 | `markdown` | Markdown linting | markdownlint |
 | `yaml` | YAML linting | yamllint |
 | `docker` | Dockerfile linting | hadolint |

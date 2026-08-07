@@ -16,7 +16,7 @@ def test_hooks_from_same_repo_and_rev_are_grouped():
 
 
 def test_every_repo_entry_has_repo_and_rev():
-    repos = repos_for(["ruff", "detect-secrets", "commitlint"])
+    repos = repos_for(["ruff", "gitleaks", "commitlint"])
 
     for repo in repos:
         assert repo["repo"]

@@ -31,7 +31,15 @@ _CAPABILITIES: dict[str, Capability] = {
     "secrets": Capability(
         name="secrets",
         description="Secret scanning.",
-        tools_by_ecosystem={ANY_ECOSYSTEM: ["detect-secrets", "gitleaks"]},
+        # Exactly one tool per ecosystem key, always - a capability resolves to
+        # the one tool that implements it, never a bundle. (`detect-secrets`
+        # used to sit alongside `gitleaks` here, which silently installed both
+        # scanners on every commit; see CHANGELOG.) gitleaks wins: it's a
+        # static binary with no pre-commit venv to build, and it's usable
+        # without a baseline file - detect-secrets needs one maintained to
+        # avoid re-flagging everything already in the repo, which cuts
+        # against "no setup guides".
+        tools_by_ecosystem={ANY_ECOSYSTEM: ["gitleaks"]},
     ),
     "markdown": Capability(
         name="markdown",

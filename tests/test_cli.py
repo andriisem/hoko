@@ -137,6 +137,34 @@ def test_rm_removes_an_installed_capability(tmp_path, monkeypatch, fake_precommi
     assert HokoConfig.load().capabilities == []
 
 
+def test_rm_commitlint_removes_its_generated_config(
+    tmp_path, monkeypatch, fake_precommit
+):
+    monkeypatch.chdir(tmp_path)
+    runner.invoke(app, ["add", "commitlint"])
+    assert Path(".commitlintrc.yaml").exists()
+
+    result = runner.invoke(app, ["rm", "commitlint"])
+
+    assert result.exit_code == 0
+    assert "Removed .commitlintrc.yaml" in result.output
+    assert not Path(".commitlintrc.yaml").exists()
+
+
+def test_rm_commitlint_keeps_a_hand_edited_config(
+    tmp_path, monkeypatch, fake_precommit
+):
+    monkeypatch.chdir(tmp_path)
+    runner.invoke(app, ["add", "commitlint"])
+    Path(".commitlintrc.yaml").write_text("extends:\n  - custom\n")
+
+    result = runner.invoke(app, ["rm", "commitlint"])
+
+    assert result.exit_code == 0
+    assert "Removed .commitlintrc.yaml" not in result.output
+    assert Path(".commitlintrc.yaml").read_text() == "extends:\n  - custom\n"
+
+
 def test_add_without_arguments_prompts_for_capabilities(
     tmp_path, monkeypatch, fake_precommit
 ):

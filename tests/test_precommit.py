@@ -48,7 +48,20 @@ def test_write_config_creates_file_when_none_exists(tmp_path, monkeypatch):
     write_config(config)
 
     document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
-    assert document["repos"][0]["repo"].endswith("detect-secrets")
+    assert document["repos"][0]["repo"].endswith("gitleaks")
+
+
+def test_secrets_capability_resolves_to_exactly_one_scanner(tmp_path, monkeypatch):
+    """Regression: `secrets` used to list detect-secrets *and* gitleaks, so
+    `hoko add secrets` silently installed both scanners on every commit -
+    contradicting "which tool that resolves to is Hoko's problem, not yours".
+    """
+    monkeypatch.chdir(tmp_path)
+
+    repos = render_repos(HokoConfig(capabilities=["secrets"]))
+
+    assert len(repos) == 1
+    assert repos[0]["repo"].endswith("gitleaks")
 
 
 def test_write_config_preserves_hand_added_repo(tmp_path, monkeypatch):
@@ -72,7 +85,7 @@ def test_write_config_preserves_hand_added_repo(tmp_path, monkeypatch):
     assert local_repos[0]["hooks"][0]["id"] == "my-custom-check"
 
     managed_repos = [repo for repo in document["repos"] if repo["repo"] != "local"]
-    assert any(repo["repo"].endswith("detect-secrets") for repo in managed_repos)
+    assert any(repo["repo"].endswith("gitleaks") for repo in managed_repos)
 
 
 def test_write_config_drops_stale_managed_repo_when_capability_removed(
@@ -85,7 +98,7 @@ def test_write_config_drops_stale_managed_repo_when_capability_removed(
 
     document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
     repo_urls = [repo["repo"] for repo in document["repos"]]
-    assert any(url.endswith("detect-secrets") for url in repo_urls)
+    assert any(url.endswith("gitleaks") for url in repo_urls)
     assert not any(url.endswith("markdownlint-cli") for url in repo_urls)
 
 
@@ -241,10 +254,10 @@ def test_ensure_installed_survives_a_missing_installer(monkeypatch):
     assert precommit.ensure_installed() is False
 
 
-def _set_detect_secrets_rev(rev: str) -> None:
+def _set_gitleaks_rev(rev: str) -> None:
     document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
     for repo in document["repos"]:
-        if repo["repo"].endswith("detect-secrets"):
+        if repo["repo"].endswith("gitleaks"):
             repo["rev"] = rev
     with Path(".pre-commit-config.yaml").open("w") as handle:
         _yaml.dump(document, handle)
@@ -271,12 +284,12 @@ def test_write_config_bumps_a_pin_older_than_hokos_default(tmp_path, monkeypatch
     monkeypatch.chdir(tmp_path)
     config = HokoConfig(capabilities=["secrets"])
     write_config(config)
-    _set_detect_secrets_rev("v1.0.0")
+    _set_gitleaks_rev("v1.0.0")
 
     write_config(config)
 
     document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
-    repo = next(r for r in document["repos"] if r["repo"].endswith("detect-secrets"))
+    repo = next(r for r in document["repos"] if r["repo"].endswith("gitleaks"))
     assert repo["rev"] != "v1.0.0"
 
 
@@ -288,12 +301,12 @@ def test_write_config_never_downgrades_a_pin_ahead_of_hokos_default(
     write_config(config)
     # Simulate `pre-commit autoupdate` (via `hoko update`) moving the pin
     # ahead of hoko's own bundled default.
-    _set_detect_secrets_rev("v9.9.9")
+    _set_gitleaks_rev("v9.9.9")
 
     write_config(config)
 
     document = _yaml.load(Path(".pre-commit-config.yaml").read_text())
-    repo = next(r for r in document["repos"] if r["repo"].endswith("detect-secrets"))
+    repo = next(r for r in document["repos"] if r["repo"].endswith("gitleaks"))
     assert repo["rev"] == "v9.9.9"
 
 
@@ -301,7 +314,7 @@ def test_health_checks_flags_a_stale_hook_pin(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config = HokoConfig(capabilities=["secrets"])
     write_config(config)
-    _set_detect_secrets_rev("v1.0.0")
+    _set_gitleaks_rev("v1.0.0")
 
     checks = precommit.health_checks(config)
 
@@ -313,7 +326,7 @@ def test_health_checks_does_not_flag_an_autoupdated_pin_as_stale(tmp_path, monke
     monkeypatch.chdir(tmp_path)
     config = HokoConfig(capabilities=["secrets"])
     write_config(config)
-    _set_detect_secrets_rev("v9.9.9")
+    _set_gitleaks_rev("v9.9.9")
 
     checks = precommit.health_checks(config)
 

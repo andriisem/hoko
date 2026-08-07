@@ -6,6 +6,7 @@ from rich.console import Console
 from hoko.adapters import precommit
 from hoko.capabilities.registry import get_capability
 from hoko.config.models import HokoConfig
+from hoko.generators.tool_configs import remove_managed_tool_configs
 from hoko.ui.prompts import Option, is_interactive, multiselect
 
 console = Console()
@@ -56,12 +57,17 @@ def run(
             console.print("Nothing selected.")
             raise typer.Exit()
 
+    removed: list[str] = []
     for name in capabilities:
         if name not in config.capabilities:
             console.print(f"[yellow]Not installed:[/yellow] {name}")
             continue
         config.remove_capability(name)
+        removed.append(name)
         console.print(f"[green]✓[/green] Removed {name}")
 
     precommit.write_config(config)
     config.save()
+
+    for filename in remove_managed_tool_configs(removed):
+        console.print(f"[green]✓[/green] Removed {filename}")

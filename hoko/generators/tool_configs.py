@@ -74,3 +74,27 @@ def ensure_tool_configs(config: HokoConfig, root: Path | None = None) -> list[st
         created.append(COMMITLINT_CONFIG_FILENAME)
 
     return created
+
+
+def remove_managed_tool_configs(
+    removed: list[str], root: Path | None = None
+) -> list[str]:
+    """Delete companion config files hoko created, for capabilities being removed.
+
+    Mirrors `ensure_tool_configs`'s "never touch what isn't ours" rule in
+    reverse: a file is only deleted if its content still exactly matches what
+    hoko generated. If the user has since edited it (or `hoko add` found and
+    kept a pre-existing one), it's left in place - `hoko rm` un-installs a
+    capability, it doesn't guess what else to delete. Returns the filenames
+    removed.
+    """
+    root = root or Path(".")
+    deleted: list[str] = []
+
+    if "commitlint" in removed:
+        path = root / COMMITLINT_CONFIG_FILENAME
+        if path.exists() and path.read_text() == _COMMITLINT_CONFIG:
+            path.unlink()
+            deleted.append(COMMITLINT_CONFIG_FILENAME)
+
+    return deleted
